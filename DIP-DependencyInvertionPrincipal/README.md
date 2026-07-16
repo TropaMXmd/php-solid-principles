@@ -1,22 +1,22 @@
-Dependency Inversion Principle (DIP)
+# Dependency Inversion Principle (DIP)
 
-Dependency Inversion Principle states:
-
-High-level modules should not depend on low-level modules.
-Both should depend on abstractions.
-Abstractions should not depend on details; details should depend on abstractions.
+> **High-level modules should not depend on low-level modules. Both should depend on abstractions.**
+> **Abstractions should not depend on details; details should depend on abstractions.**
 
 In short:
 
-Don’t depend on concrete classes
-
-Depend on interfaces (abstractions)
+- Don't depend on concrete classes
+- Depend on interfaces (abstractions)
 
 This leads to loose coupling, easy extension, and better testability.
 
+---
+
+## ❌ Violating DIP
+
 Suppose we want to calculate the total area of shapes.
 
-Low-level concrete classes
+**Low-level concrete classes**
 
 ```php
 class Square
@@ -36,7 +36,7 @@ class Circle
 }
 ```
 
-High-level module (❌ depends on concretes)
+**High-level module (depends directly on concretes)**
 
 ```php
 class AreaCalculator
@@ -65,127 +65,163 @@ class AreaCalculator
 }
 ```
 
-❌ Why this violates DIP
+**Why this violates DIP**
 
-AreaCalculator (high-level) depends directly on Square and Circle
+- `AreaCalculator` (high-level) depends directly on `Square` and `Circle`
+- Adding a new shape (`Triangle`) forces modification of `AreaCalculator`
+- Violates DIP **and** the Open–Closed Principle
 
-Adding a new shape (Triangle) forces modification of AreaCalculator
+---
 
-Violates DIP and Open–Closed Principle
+## ✅ Applying Dependency Inversion Principle
 
-✅ Applying Dependency Inversion Principle
-
-Instead of depending on concrete shapes, we introduce an abstraction (interface) Shape2DInterface
-
-This interface defines what a shape can do, not how it does it.
-
-High-level module(AreaCalculator) depends on abstraction only
-
-As a result,
-
-- AreaCalculator no longer cares what concrete shape it receives
-- It only knows that each shape has an area() method
-- High-level and low-level modules both depend on the interface
-
-Real life example:
-
-Here is an example of a PasswordReminder that connects to a MySQL database:
+Instead of depending on concrete shapes, we introduce an abstraction — `Shape2DInterface`. This interface defines _what_ a shape can do, not _how_ it does it.
 
 ```php
-class MySQLConnection
+interface Shape2DInterface
 {
-    public function connect()
-    {
-        // handle the database connection
-        return 'Database connection';
-    }
+    public function area(): float;
 }
+```
 
-class PasswordReminder
+```php
+class Square implements Shape2DInterface
 {
-    private $dbConnection;
-
-    public function __construct(MySQLConnection $dbConnection)
+    public function area(): float
     {
-        $this->dbConnection = $dbConnection;
+        return 16;
     }
 }
-```
 
-First, the MySQLConnection is the low-level module while the PasswordReminder is high level, but according to the definition of D in SOLID, which states to Depend on abstraction, not on concretions. This snippet above violates this principle as the PasswordReminder class is being forced to depend on the MySQLConnection class.
-
-Later, if you were to change the database engine (e.g., from MySQL to PostgreSQL or an API service), you would also have to edit the PasswordReminder class, which would violate the open-close principle, as the class would need modification for extension.
-
-The PasswordReminder class should not care what database your application uses. To address these issues, you can code to an interface since high-level and low-level modules should depend on abstraction.
-
-First, define an interface for database connections. This interface (DBConnectionInterface) serves as the abstraction:
-
-```php
-interface DBConnectionInterface
+class Circle implements Shape2DInterface
 {
-    public function connect();
+    public function area(): float
+    {
+        return 28.27;
+    }
 }
 ```
 
-The interface has a connect method, and the MySQLConnection class implements this interface. Also, instead of directly type-hinting the MySQLConnection class in the constructor of the PasswordReminder, you type-hint the DBConnectionInterface. No matter the type of database your application uses, the PasswordReminder class can connect to the database without any problems, and the open-close principle is not violated.
-
-This interface simply declares what a database connection object should be able to do (connect()), without specifying how it does it.
-
-Next, your concrete MySQLConnection class will implement this interface, providing the specific details of how to connect to a MySQL database:
-
 ```php
-class MySQLConnection implements DBConnectionInterface
+class AreaCalculator
 {
-    public function connect()
+    public function __construct(private array $shapes) {}
+
+    public function sum(): float
     {
-        // handle the database connection
-        return 'Database connection established';
+        $area = 0;
+
+        foreach ($this->shapes as $shape) {
+            if ($shape instanceof Shape2DInterface) {
+                $area += $shape->area();
+            }
+        }
+
+        return $area;
     }
 }
 ```
 
-Now, in the constructor of the PasswordReminder class, instead of directly type-hinting the concrete MySQLConnection class, you type-hint the DBConnectionInterface.
+As a result:
+
+- `AreaCalculator` no longer cares what concrete shape it receives
+- It only knows that each shape has an `area()` method
+- High-level and low-level modules both depend on the same abstraction (`Shape2DInterface`)
+
+---
+
+## Applying DIP in Laravel: File Storage Example
+
+The Dependency Inversion Principle (DIP) states that high-level modules should not depend on low-level modules, but both should depend on abstractions. In other words, instead of depending on specific implementations, modules should rely on interfaces or abstract classes.
+
+### ❌ Code Sample Violating DIP — Using the `Storage` Facade Directly
 
 ```php
-class PasswordReminder{
-    private $dbConnection;
-
-    public function __construct(DBConnectionInterface $dbConnection) // Type-hinting the interface
+class UserController extends Controller
+{
+    public function store(Request $request)
     {
-        $this->dbConnection = $dbConnection;
-    }
+        $avatar = $request->file('avatar');
 
-    public function remind() {
-        $connectionStatus = $this->dbConnection->connect();
-        return "Password reminder process initiated. Connection status: " . $connectionStatus;
+        // Violation: The UserController depends directly on the Storage facade.
+        // This makes it tightly coupled to Laravel's file storage implementation.
+        $path = Storage::disk('local')->put('avatars', $avatar);
+
+        // ...
     }
 }
 ```
 
-When you use PasswordReminder, you provide it with an instance of a class that implements DBConnectionInterface. The PasswordReminder doesn’t need to know the specific type of connection (MySQL, PostgreSQL, etc.); it just knows it has an object that guarantees it can call a connect() method.
+The `UserController` class relies on the `Storage` facade and calls its `disk` and `put` methods directly. By depending on the `Storage` facade directly, `UserController` is tightly coupled to the specific file storage system implemented by Laravel, making it harder to switch to a different storage mechanism without modifying the `UserController` code.
 
-Here’s how you would use it in your application:
+### ✅ Code Sample Following DIP — Using a `FileStorage` Service
 
-```php
-// Create a concrete MySQL connection object
-$mysqlConnector = new MySQLConnection();
-
-// Inject the concrete MySQL connection object into the PasswordReminder
-// The PasswordReminder only sees it as a DBConnectionInterface
-$passwordReminder = new PasswordReminder($mysqlConnector);
-
-echo $passwordReminder->remind(); // Output: Password reminder process initiated. Connection status: MySQL Database connection established.
-```
-
-If you later decide to switch to a PostgreSQL database, you would simply create a PostgreSQLConnection class that also implements DBConnectionInterface and, in your application’s setup, simply change which concrete class you instantiate and inject:
+**Step 1: Define the abstraction**
 
 ```php
-$pgConnector = new PostgreSQLConnection();
-$passwordReminder = new PasswordReminder($pgConnector);
-
-echo $passwordReminder->remind();
+interface FileStorage
+{
+    public function storeFile($directory, $file);
+}
 ```
 
-This demonstrates how easily you can swap implementations thanks to dependency inversion.
+**Step 2: Concrete implementations**
 
-Notice that the PasswordReminder class itself did not need to be changed or modified when the underlying database technology changed. Both the high-level PasswordReminder module and the low-level MySQLConnection (or PostgreSQLConnection) module now depend on the DBConnectionInterface abstraction, not on each other’s concretions. This makes the system more flexible, easier to test (you can inject mock database connections), and adheres to the Open-Closed Principle.
+```php
+class LocalFileStorage implements FileStorage
+{
+    public function storeFile($directory, $file)
+    {
+        return Storage::disk('local')->put($directory, $file);
+    }
+}
+```
+
+```php
+class S3FileStorage implements FileStorage
+{
+    public function storeFile($directory, $file)
+    {
+        return Storage::disk('s3')->put($directory, $file);
+    }
+}
+```
+
+**Step 3: Depend on the abstraction, not the facade**
+
+```php
+class UserController extends Controller
+{
+    private $fileStorage;
+
+    public function __construct(FileStorage $fileStorage)
+    {
+        $this->fileStorage = $fileStorage;
+    }
+
+    public function store(Request $request)
+    {
+        $avatar = $request->file('avatar');
+
+        // The UserController depends on the FileStorage abstraction, which can be
+        // implemented using different storage systems.
+        $path = $this->fileStorage->storeFile('avatars', $avatar);
+
+        // ...
+    }
+}
+```
+
+The `UserController` class now depends on the `FileStorage` interface instead of directly relying on the `Storage` facade or a specific implementation. This interface serves as an abstraction that defines the contract for file storage operations.
+
+The `S3FileStorage` class implements the `FileStorage` interface and provides the concrete implementation for storing files in AWS S3. By injecting the `FileStorage` interface into the `UserController` constructor, the controller is decoupled from the specific storage mechanism and depends only on the abstraction.
+
+This adherence to the Dependency Inversion Principle allows for easier interchangeability of storage implementations. You can introduce new implementations of the `FileStorage` interface (e.g. a `LocalFileStorage` class) without modifying the `UserController` code. The choice of storage mechanism can be determined at runtime or through configuration (`.env` file), providing flexibility and maintainability.
+
+**Why this satisfies DIP**
+
+| Module                                           | Depends On                  | Reason                                           |
+| ------------------------------------------------ | --------------------------- | ------------------------------------------------ |
+| `UserController` (high-level)                    | `FileStorage` (abstraction) | Doesn't care which storage system is used        |
+| `LocalFileStorage` / `S3FileStorage` (low-level) | `FileStorage` (abstraction) | Each provides its own storage details            |
+| Service provider binding                         | Both, via binding           | Wires abstraction to implementation in one place |

@@ -1,49 +1,49 @@
-Open–Closed Principle (OCP)
+# Open–Closed Principle (OCP)
 
-OCP states:
-
-Software entities (classes, modules, functions) should be open for extension but closed for modification.
+> **Software entities (classes, modules, functions) should be open for extension but closed for modification.**
 
 This means:
 
-You should be able to add new behavior
+- You should be able to **add new behavior**
+- **Without changing** existing, tested code
 
-Without changing existing, tested code
+---
 
-❌ Wrong approach (Violates OCP)
-Area calculation with conditionals
+## ❌ Wrong Approach (Violates OCP)
+
+**Area calculation with conditionals**
 
 ```php
 class AreaCalculator
 {
     public function sum(array $shapes): float
     {
-            $area = 0;
+        $area = 0;
 
-            foreach ($shapes as $shape) {
-                if ($shape['type'] === 'square') {
-                    $area += $shape['side'] ** 2;
-                } elseif ($shape['type'] === 'circle') {
-                    $area += pi() * $shape['radius'] ** 2;
-                }
+        foreach ($shapes as $shape) {
+            if ($shape['type'] === 'square') {
+                $area += $shape['side'] ** 2;
+            } elseif ($shape['type'] === 'circle') {
+                $area += pi() * $shape['radius'] ** 2;
             }
-
-            return $area;
         }
 
+        return $area;
     }
+}
 ```
 
-Problem
+**Problem**
 
-Every time a new shape is added, this class must be modified
+- Every time a new shape is added, this class must be modified
+- High risk of bugs
+- Violates OCP
 
-High risk of bugs
+---
 
-Violates OCP
+## ✅ Correct Approach (OCP-Compliant)
 
-✅ Correct approach (OCP-compliant)
-Step 1: Define a stable abstraction
+### Step 1: Define a stable abstraction
 
 ```php
 interface Shape2DInterface
@@ -52,8 +52,9 @@ interface Shape2DInterface
 }
 ```
 
-Step 2: Shapes implement their own behavior
-Square
+### Step 2: Shapes implement their own behavior
+
+**Square**
 
 ```php
 class Square implements Shape2DInterface
@@ -64,11 +65,10 @@ class Square implements Shape2DInterface
     {
         return $this->side ** 2;
     }
-
 }
 ```
 
-Circle
+**Circle**
 
 ```php
 class Circle implements Shape2DInterface
@@ -79,11 +79,10 @@ class Circle implements Shape2DInterface
     {
         return pi() * $this->radius ** 2;
     }
-
 }
 ```
 
-Step 3: AreaCalculator depends only on the abstraction
+### Step 3: `AreaCalculator` depends only on the abstraction
 
 ```php
 class AreaCalculator
@@ -102,7 +101,6 @@ class AreaCalculator
 
         return $total;
     }
-
 }
 ```
 
@@ -110,8 +108,11 @@ class AreaCalculator
 ✔ No shape-specific logic
 ✔ Closed for modification
 
-➕ Extending the system (WITHOUT modifying existing code)
-Add a new shape: Triangle
+---
+
+## ➕ Extending the System (Without Modifying Existing Code)
+
+**Add a new shape: Triangle**
 
 ```php
 class Triangle implements Shape2DInterface
@@ -125,29 +126,61 @@ class Triangle implements Shape2DInterface
     {
         return 0.5 * $this->base * $this->height;
     }
-
 }
 ```
 
-Use it immediately
+**Use it immediately**
 
 ```php
 $calculator = new AreaCalculator([
-        new Square(4), // 16
-        new Circle(3), // ≈28.27
-        new Triangle(5, 6) // 15
-    ]);
+    new Square(4),      // 16
+    new Circle(3),       // ≈28.27
+    new Triangle(5, 6),  // 15
+]);
 
 echo $calculator->sum(); // ≈59.27
 ```
 
-✔ AreaCalculator unchanged
+✔ `AreaCalculator` unchanged
 ✔ Existing code untouched
 ✔ OCP respected
 
-Why this satisfies OCP
-Principle Explanation
-Open for extension Add new shape classes
-Closed for modification AreaCalculator never changes
-Low risk No regression in tested logic
-Clean design No conditional explosion
+---
+
+## Why This Satisfies OCP
+
+| Principle                   | Explanation                    |
+| --------------------------- | ------------------------------ |
+| **Open for extension**      | Add new shape classes          |
+| **Closed for modification** | `AreaCalculator` never changes |
+| **Low risk**                | No regression in tested logic  |
+| **Clean design**            | No conditional explosion       |
+
+---
+
+## Applying OCP in Laravel
+
+In Laravel, this principle can be applied using interfaces and abstract classes. By defining an interface for a specific task, you can create multiple implementations of that task, each with its own unique functionality.
+
+```php
+interface PaymentMethodInterface
+{
+    public function processPayment($amount);
+}
+
+class CreditCardPayment implements PaymentMethodInterface
+{
+    public function processPayment($amount)
+    {
+        // Credit card payment processing logic
+    }
+}
+
+class BankTransferPayment implements PaymentMethodInterface
+{
+    public function processPayment($amount)
+    {
+        // Bank transfer payment processing logic
+    }
+}
+```
