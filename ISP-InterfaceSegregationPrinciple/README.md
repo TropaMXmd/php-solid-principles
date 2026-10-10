@@ -1,6 +1,6 @@
 # Interface Segregation Principle (ISP)
 
-> **A client should never be forced to implement an interface that it doesn't use — clients shouldn't be forced to depend on methods they do not use.**
+> **A class should never be forced to implement an interface that it doesn't use — class shouldn't be forced to depend on methods they do not use.**
 
 This principle emphasizes that large, general-purpose interfaces should be broken down into smaller, more specific ones. This way, client classes only need to know about the methods that are relevant to them.
 
